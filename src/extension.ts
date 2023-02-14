@@ -1,6 +1,7 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
+import * as fs from 'fs';
 import { RequestHandler } from 'express';
 var express = require('express');
 
@@ -60,18 +61,27 @@ function startServer(){
 	
 	app.use(express.json());
 
-	// Go to line
-	app.post("/goto", gotoLineHandler);
-
 	// Go to position
 	app.post("/goto/position", gotoPositionHandler);
 
 	// Select matching
 	app.post("/goto/match", gotoMatchHandler);
 
+	// Go to line
+	app.post("/goto", gotoLineHandler);
+
 	// Replace position
 	app.post("/replace/position", replacePositionHandler);
 
+	// Replace Match
+	// Find match and replace the matched text
+
+	// Replace yaml tree
+	// Replace smth at yaml tree position e.b. spec.field = value, needed for kubernetes manifests
+
+
+	// Replace json tree
+	// replace at position in json tree, need for config files
 
 
 	const PORT = process.env.API_PORT || 7331;
@@ -85,6 +95,10 @@ export const gotoLineHandler: RequestHandler = (req, res) => {
 		res.status(400).json({ error: "Failed due to missing parameters" });
 		return;
 	}
+	if (!fs.existsSync(req.body.file)) {
+		res.status(400).json({ error: "The provided file does not exist" });
+		return;
+	}
 	let line = req.body.line;
 	let file: vscode.Uri = vscode.Uri.parse("file:" + req.body.file);
 	gotoLine(file, line);
@@ -92,23 +106,27 @@ export const gotoLineHandler: RequestHandler = (req, res) => {
   };
 
 export const gotoMatchHandler: RequestHandler = (req, res) => {
-	if(!req.body.file || !req.body.match){
-		res.status(400).json({ error: "Failed due to missing parameters" });
-		return;
-	}
-	let line = req.body.line;
-	let file: vscode.Uri = vscode.Uri.parse("file:" + req.body.file);
-	gotoLine(file, line);
-	res.json({ success: "true" });
+	res.status(500).json({ error: "unimplemented" });
 };
 
   export const gotoPositionHandler: RequestHandler = (req, res) => {
-	if(!req.body.file || !req.body.start || !req.body.end){
+	if(!req.body.file || !req.body.start){
 		res.status(400).json({ error: "Failed due to missing parameters" });
 		return;
 	}
+	if (!fs.existsSync(req.body.file)) {
+		res.status(400).json({ error: "The provided file does not exist" });
+		return;
+	}
+
 	let start = new vscode.Position(req.body.start.line - 1, req.body.start.char ?? 0)
-	let end = new vscode.Position(req.body.end.line - 1, req.body.end.char ?? 0)
+	let end = new vscode.Position(req.body.start.line - 1, req.body.start.char ?? 0)
+
+	// end is optional
+	if(req.body.end && req.body.end.line && req.body.end.char){
+		end = new vscode.Position(req.body.end.line - 1, req.body.end.char ?? 0)
+	}
+
 	let file: vscode.Uri = vscode.Uri.parse("file:" + req.body.file);
 	gotoPosition(file, start, end);
 	res.json({ success: "true" });
@@ -119,8 +137,19 @@ export const replacePositionHandler: RequestHandler = (req, res) => {
 		res.status(400).json({ error: "Failed due to missing parameters" });
 		return;
 	}
+	if (!fs.existsSync(req.body.file)) {
+		res.status(400).json({ error: "The provided file does not exist" });
+		return;
+	}
+
 	let start = new vscode.Position(req.body.start.line - 1, req.body.start.char ?? 0)
-	let end = new vscode.Position(req.body.end.line - 1, req.body.end.char ?? 0)
+	let end = new vscode.Position(req.body.start.line - 1, req.body.start.char ?? 0)
+
+	// end is optional
+	if(req.body.end && req.body.end.line && req.body.end.char){
+		end = new vscode.Position(req.body.end.line - 1, req.body.end.char ?? 0)
+	}
+
 	let text = req.body.text;
 	let file: vscode.Uri = vscode.Uri.parse("file:" + req.body.file);
 	replacePosition(file, start, end, text);
